@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desafio Reinício Feminino · Painel do Cliente</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Karla:wght@400;500;700&display=swap');
+
+  :root{
+    --cream:#FBF3EC;
+    --rose:#C97B84;
+    --rose-deep:#8F4A56;
+    --gold:#C99A4A;
+    --ink:#3A2E2E;
+    --line:#E7D9CF;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--cream); color:var(--ink);
+    font-family:'Karla',sans-serif; padding:20px 16px 60px;
+  }
+  h1{ font-family:'Fraunces',serif; font-size:1.7rem; color:var(--rose-deep); margin:0 0 4px; }
+  .sub{ font-size:0.9rem; color:#8a7a72; margin-bottom:16px; }
+
+  .card {
+    background:#fff; border:1px solid var(--line); border-radius:14px;
+    padding:18px; margin-bottom:14px; box-shadow:0 2px 8px rgba(143,74,86,0.05);
+  }
+  .admin-notice-card {
+    background: linear-gradient(135deg, #FFF9F5 0%, #F8ECE4 100%);
+    border:1px solid #E2C2BD;
+  }
+  
+  .field-group { margin-bottom: 12px; }
+  .field-group label { display:block; font-size:0.85rem; font-weight:700; color:var(--rose-deep); margin-bottom:4px; }
+  .field-group input, .field-group select {
+    width:100%; padding:10px; border:1px solid var(--line); border-radius:8px; font-family:inherit; font-size:0.9rem;
+  }
+
+  .btn {
+    display:flex; align-items:center; justify-content:center; width:100%;
+    padding:12px 16px; border-radius:20px; font-weight:700; border:none; cursor:pointer;
+    background:var(--rose-deep); color:#fff; transition:0.2s;
+  }
+  .btn:disabled { opacity:0.6; cursor:not-allowed; }
+
+  .toast { display:none; padding:12px; border-radius:8px; font-size:0.85rem; text-align:center; margin-top:10px; font-weight:600; }
+  .toast-ok { background:#E8F5E9; color:#2E7D32; border:1px solid #C8E6C9; }
+  .toast-err { background:#FFEBEE; color:#C62828; border:1px solid #FFCDD2; }
+
+  .day-card { border:1px solid var(--line); border-radius:10px; margin-bottom:10px; overflow:hidden; background:#fff; }
+  .day-header { padding:14px 16px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+  .day-body { display:none; padding:16px; border-top:1px solid var(--line); }
+  .day-card.open .day-body { display:block; }
+
+  .check-row { display:flex; align-items:center; gap:10px; padding:6px 0; font-size:0.9rem; }
+  .check-row input { width:18px; height:18px; accent-color:var(--rose); }
+
+  .chart-box { position:relative; height:220px; margin-top:10px; }
+</style>
+</head>
+<body>
+
+<h1>🌸 Desafio Reinício Feminino</h1>
+<div class="sub">Seu Portal de Acompanhamento Diário</div>
+
+<!-- RECADOS E CONTEÚDO DINÂMICO DA NUTRI (AUTOMÁTICO VIA PLANILHA) -->
+<div class="card admin-notice-card">
+  <h2 id="admAviso" style="font-family:'Fraunces',serif; font-size:1.15rem; color:var(--rose-deep); margin-top:0;">
+    ⏳ Carregando recados da Nutri...
+  </h2>
+  <p id="admMensagem" style="font-size:0.9rem; font-style:italic; color:#5A4A48;">
+    Aguarde um instante enquanto conectamos à sua ficha.
+  </p>
+  <blockquote id="admMotivacao" style="border-left:3px solid var(--gold); margin:10px 0; padding-left:10px; font-size:0.85rem; color:#7A6030;"></blockquote>
+  
+  <div id="admMediaArea" style="margin-top:12px;"></div>
+</div>
+
+<!-- IDENTIFICAÇÃO E DADOS DA PARTICIPANTE -->
+<div class="card">
+  <div class="field-group">
+    <label for="userEmail">📧 Seu E-mail Cadastrado:</label>
+    <input type="email" id="userEmail" placeholder="Digite seu e-mail para conectar">
+  </div>
+  
+  <details id="dadosPessoaisDetails">
+    <summary style="font-size:0.85rem; font-weight:700; color:var(--rose-deep); cursor:pointer;">
+      📝 Editar meus dados cadastrais (Nome, Peso, WhatsApp)
+    </summary>
+    <div style="margin-top:10px;">
+      <div class="field-group">
+        <label>Nome Completo:</label>
+        <input type="text" id="userName" placeholder="Seu nome">
+      </div>
+      <div class="field-group">
+        <label>WhatsApp / Telefone:</label>
+        <input type="text" id="userPhone" placeholder="(21) 99999-9999">
+      </div>
+      <div class="field-group">
+        <label>Peso Atual (kg):</label>
+        <input type="number" step="0.1" id="userWeight" placeholder="Ex: 65.5">
+      </div>
+    </div>
+  </details>
+</div>
+
+<!-- BARRA DE PROGRESSO & BOTÃO ENVIAR -->
+<div class="card">
+  <div style="display:flex; justify-content:space-between; font-weight:700; font-size:0.9rem; color:var(--rose-deep); margin-bottom:8px;">
+    <span>Seu Progresso de Hábitos:</span>
+    <span id="totalPts">0 pts</span>
+  </div>
+  <button class="btn" id="saveBtn" onclick="sincronizarComPlanilha()">
+    ✨ Enviar / Atualizar Meu Check-in na Planilha
+  </button>
+  <div id="toast" class="toast"></div>
+</div>
+
+<!-- ANÁLISE VISUAL (GRÁFICO) -->
+<div class="card">
+  <details open>
+    <summary style="font-family:'Fraunces',serif; font-size:1rem; color:var(--rose-deep); font-weight:700; cursor:pointer;">
+      📊 Análise de Desempenho
+    </summary>
+    <div class="chart-box">
+      <canvas id="habitsChart"></canvas>
+    </div>
+  </details>
+</div>
+
+<!-- CHECKLIST DOS 14 DIAS -->
+<div id="daysList"></div>
+
+<script>
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxv3ow0O9mETuNNz_gO7jUHCy-926XVqER6bS0KaYySG7LxeFC1aQnt6NvgniFtfePzkQ/exec";
+const TOTAL_DIAS = 14;
+let state = {};
+let habitsChart = null;
+
+// Inicialização automática ao abrir
+window.addEventListener('DOMContentLoaded', () => {
+  inicializarEstadoLocal();
+  renderizarDias();
+  
+  const savedEmail = localStorage.getItem('reinicio_email');
+  if (savedEmail) {
+    document.getElementById('userEmail').value = savedEmail;
+    carregarDadosDaPlanilha(savedEmail);
+  } else {
+    document.getElementById('admAviso').innerText = "🌸 Seja bem-vinda!";
+    document.getElementById('admMensagem').innerText = "Informe seu e-mail abaixo para carregar seu plano e avisos.";
+  }
+});
+
+document.getElementById('userEmail').addEventListener('change', (e) => {
+  const email = e.target.value.trim();
+  if (email) {
+    localStorage.setItem('reinicio_email', email);
+    carregarDadosDaPlanilha(email);
+  }
+});
+
+function inicializarEstadoLocal() {
+  for (let i = 1; i <= TOTAL_DIAS; i++) {
+    state[i] = {
+      agua: false, vaccum: false, cardio: false, alimentacao: false, post: false, conforto: 3
+    };
+  }
+}
+
+// 1. CONSULTA AUTOMÁTICA (Planilha -> Site)
+async function carregarDadosDaPlanilha(email) {
+  const aviso = document.getElementById('admAviso');
+  const msg = document.getElementById('admMensagem');
+  
+  try {
+    aviso.innerText = "🔄 Sincronizando com a Nutri...";
+    
+    // Anticache adicionado (&_t=)
+    const res = await fetch(`${WEBAPP_URL}?email=${encodeURIComponent(email)}&_t=${Date.now()}`, {
+      method: 'GET',
+      redirect: 'follow'
+    });
+    
+    const data = await res.json();
+    
+    if (data.success) {
+      // Atualiza o Painel Admin vindo da planilha
+      if (data.painel) {
+        aviso.innerText = data.painel.AvisoGlobal || "🌸 Desafio Reinício";
+        msg.innerText = data.painel.MensagemDoDia || "";
+        document.getElementById('admMotivacao').innerText = data.painel.Motivacao ? `"${data.painel.Motivacao}"` : "";
+        
+        let mediaHtml = "";
+        if (data.painel.VideoDoDia) {
+          mediaHtml += `<iframe src="${data.painel.VideoDoDia}" width="100%" height="200" style="border:none; border-radius:8px; margin-bottom:8px;" allow="autoplay"></iframe>`;
+        }
+        if (data.painel.LinkTreino) {
+          mediaHtml += `<a href="${data.painel.LinkTreino}" target="_blank" style="display:block; font-size:0.85rem; color:var(--rose-deep); font-weight:700; margin-top:4px;">🏋️‍♀️ Abrir Treino de Hoje</a>`;
+        }
+        document.getElementById('admMediaArea').innerHTML = mediaHtml;
+      }
+      
+      // Carrega dados da participante caso ela já tenha registros na planilha
+      if (data.participante) {
+        if (data.participante.Nome) document.getElementById('userName').value = data.participante.Nome;
+        if (data.participante.Telefone) document.getElementById('userPhone').value = data.participante.Telefone;
+        if (data.participante.Peso) document.getElementById('userWeight').value = data.participante.Peso;
+        
+        if (data.participante.DadosProgresso) {
+          try {
+            const progressoSalvo = JSON.parse(data.participante.DadosProgresso);
+            state = { ...state, ...progressoSalvo };
+            renderizarDias();
+            atualizarProgressoEGrafico();
+          } catch(e) {}
+        }
+      }
+    }
+  } catch (err) {
+    aviso.innerText = "🌸 Desafio Reinício Feminino";
+    msg.innerText = "Acompanhe seus hábitos diários abaixo.";
+  }
+}
+
+// 2. ENVIO DE DADOS (Site -> Planilha)
+async function sincronizarComPlanilha() {
+  const email = document.getElementById('userEmail').value.trim();
+  const btn = document.getElementById('saveBtn');
+  const toast = document.getElementById('toast');
+  
+  if (!email) {
+    alert("Por favor, preencha o seu e-mail para registrar na planilha!");
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.innerText = "⏳ Enviando para a planilha...";
+  toast.style.display = 'none';
+  
+  const payload = {
+    email: email,
+    nome: document.getElementById('userName').value,
+    telefone: document.getElementById('userPhone').value,
+    peso: document.getElementById('userWeight').value,
+    status: "Ativa",
+    progresso: state
+  };
+  
+  try {
+    const res = await fetch(WEBAPP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+      redirect: 'follow'
+    });
+    
+    const result = await res.json();
+    
+    if (result.success) {
+      toast.className = 'toast toast-ok';
+      toast.innerText = '✨ ' + result.message;
+    } else {
+      throw new Error(result.error);
+    }
+  } catch (err) {
+    toast.className = 'toast toast-err';
+    toast.innerText = '❌ Erro ao sincronizar: ' + err.message;
+  } finally {
+    toast.style.display = 'block';
+    btn.disabled = false;
+    btn.innerText = "✨ Enviar / Atualizar Meu Check-in na Planilha";
+  }
+}
+
+function renderizarDias() {
+  const list = document.getElementById('daysList');
+  list.innerHTML = '';
+  
+  for (let i = 1; i <= TOTAL_DIAS; i++) {
+    const d = state[i] || {};
+    const pts = (d.agua?1:0) + (d.vaccum?1:0) + (d.cardio?1:0) + (d.alimentacao?1:0) + (d.post?1:0);
+    
+    const card = document.createElement('div');
+    card.className = 'day-card';
+    card.innerHTML = `
+      <div class="day-header" onclick="this.parentElement.classList.toggle('open')">
+        <strong style="color:var(--rose-deep)">Dia ${String(i).padStart(2,'0')}</strong>
+        <span style="font-size:0.8rem; background:var(--cream); padding:2px 8px; border-radius:10px; font-weight:700">${pts}/5 pts</span>
+      </div>
+      <div class="day-body">
+        <div class="check-row"><input type="checkbox" ${d.agua?'checked':''} onchange="atualizarHabito(${i},'agua',this.checked)"> 🥛 3L de Água</div>
+        <div class="check-row"><input type="checkbox" ${d.vaccum?'checked':''} onchange="atualizarHabito(${i},'vaccum',this.checked)"> 💨 Vacuum Abdominal</div>
+        <div class="check-row"><input type="checkbox" ${d.cardio?'checked':''} onchange="atualizarHabito(${i},'cardio',this.checked)"> 🚴‍♀️ Cardio 30+ min</div>
+        <div class="check-row"><input type="checkbox" ${d.alimentacao?'checked':''} onchange="atualizarHabito(${i},'alimentacao',this.checked)"> 🥗 Alimentação 100%</div>
+        <div class="check-row"><input type="checkbox" ${d.post?'checked':''} onchange="atualizarHabito(${i},'post',this.checked)"> 📸 Postou marcando a Nutri</div>
+      </div>
+    `;
+    list.appendChild(card);
+  }
+  atualizarProgressoEGrafico();
+}
+
+function atualizarHabito(dia, habito, valor) {
+  if (!state[dia]) state[dia] = {};
+  state[dia][habito] = valor;
+  renderizarDias();
+}
+
+function atualizarProgressoEGrafico() {
+  let total = 0;
+  const ptsArray = [];
+  
+  for (let i = 1; i <= TOTAL_DIAS; i++) {
+    const d = state[i] || {};
+    const pts = (d.agua?1:0) + (d.vaccum?1:0) + (d.cardio?1:0) + (d.alimentacao?1:0) + (d.post?1:0);
+    total += pts;
+    ptsArray.push(pts);
+  }
+  
+  document.getElementById('totalPts').innerText = total + ' pts';
+  renderChart(ptsArray);
+}
+
+function renderChart(ptsData) {
+  const ctx = document.getElementById('habitsChart').getContext('2d');
+  const labels = Array.from({length: TOTAL_DIAS}, (_, i) => `D${i+1}`);
+  
+  if (habitsChart) habitsChart.destroy();
+  
+  habitsChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Hábitos Concluídos (Max 5)',
+        data: ptsData,
+        borderColor: '#8F4A56',
+        backgroundColor: 'rgba(143, 74, 86, 0.1)',
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: { y: { min:0, max:5, ticks:{ stepSize:1 } } }
+    }
+  });
+}
+</script>
+</body>
+</html>

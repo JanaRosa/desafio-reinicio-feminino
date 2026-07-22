@@ -1,0 +1,123 @@
+/**
+ * DESAFIO REINÍCIO FEMININO - COMUNICAÇÃO FRONTEND
+ */
+
+// URL atualizada e funcional do seu Google Apps Script
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxv3ow0O9mETuNNz_gO7jUHCy-926XVqER6bS0KaYySG7LxeFC1aQnt6NvgniFtfePzkQ/exec";
+
+// 1. CARREGAR DADOS DO PAINEL E DA PARTICIPANTE
+async function buscarDadosPorEmail(email) {
+  if (!email) {
+    alert("Por favor, digite seu e-mail para acessar.");
+    return;
+  }
+
+  console.log("Buscando dados para o e-mail:", email);
+
+  try {
+    // Parâmetro &_t= evita que o navegador guarde dados velhos no cache
+    const urlCompleta = `${SCRIPT_URL}?action=getData&email=${encodeURIComponent(email)}&_t=${Date.now()}`;
+    const resposta = await fetch(urlCompleta, {
+      method: "GET",
+      redirect: "follow"
+    });
+    
+    const dados = await resposta.json();
+
+    if (!dados.success) {
+      alert("Erro ao buscar dados: " + (dados.message || dados.error));
+      return;
+    }
+
+    console.log("Dados recebidos da planilha:", dados);
+
+    // Atualiza os recados do painel administrativo
+    if (dados.painel) {
+      atualizarPainelNaTela(dados.painel);
+    }
+
+    // Atualiza os dados da participante (se já cadastrada)
+    if (dados.participante) {
+      preencherDadosParticipante(dados.participante);
+    } else {
+      alert("Bem-vinda ao seu primeiro acesso! Preencha suas informações para iniciar.");
+    }
+
+  } catch (erro) {
+    console.error("Erro na comunicação com a planilha:", erro);
+    alert("Não foi possível conectar com a planilha. Verifique sua conexão.");
+  }
+}
+
+// 2. ENVIAR DADOS / CHECK-IN PARA A PLANILHA
+async function enviarDadosParaPlanilha(dadosFormulario) {
+  console.log("Enviando dados para a planilha:", dadosFormulario);
+
+  try {
+    // text/plain + redirect: follow para garantir que o Google receba sem erro de CORS
+    const resposta = await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8",
+      },
+      body: JSON.stringify(dadosFormulario),
+      redirect: "follow"
+    });
+
+    const resultado = await resposta.json();
+
+    if (resultado.success) {
+      alert(resultado.message || "Dados salvos com sucesso!");
+      // Atualiza os dados na tela novamente
+      if (dadosFormulario.email) {
+        buscarDadosPorEmail(dadosFormulario.email);
+      }
+    } else {
+      alert("Erro ao salvar: " + (resultado.error || resultado.message));
+    }
+
+  } catch (erro) {
+    console.error("Erro ao enviar dados:", erro);
+    alert("Erro ao enviar os dados. Tente novamente.");
+  }
+}
+
+// 3. ATUALIZAR INTERFACE (DOM)
+function atualizarPainelNaTela(painel) {
+  if (painel.AvisoGlobal && document.getElementById("painel-aviso")) {
+    document.getElementById("painel-aviso").innerText = painel.AvisoGlobal;
+  }
+  if (painel.MensagemDoDia && document.getElementById("painel-mensagem")) {
+    document.getElementById("painel-mensagem").innerText = painel.MensagemDoDia;
+  }
+  if (painel.Motivacao && document.getElementById("painel-motivacao")) {
+    document.getElementById("painel-motivacao").innerText = painel.Motivacao;
+  }
+  if (painel.VideoDoDia && document.getElementById("painel-video")) {
+    document.getElementById("painel-video").src = painel.VideoDoDia;
+  }
+  if (painel.LinkTreino && document.getElementById("painel-treino")) {
+    document.getElementById("painel-treino").href = painel.LinkTreino;
+  }
+  if (painel.LinkAlimentacao && document.getElementById("painel-cardapio")) {
+    document.getElementById("painel-cardapio").href = painel.LinkAlimentacao;
+  }
+}
+
+function preencherDadosParticipante(participante) {
+  if (document.getElementById("campo-nome")) {
+    document.getElementById("campo-nome").value = participante.Nome || "";
+  }
+  if (document.getElementById("campo-telefone")) {
+    document.getElementById("campo-telefone").value = participante.Telefone || "";
+  }
+  if (document.getElementById("campo-peso")) {
+    document.getElementById("campo-peso").value = participante.Peso || "";
+  }
+  if (document.getElementById("display-status")) {
+    document.getElementById("display-status").innerText = participante.Status || "Ativa";
+  }
+  if (document.getElementById("display-dia")) {
+    document.getElementById("display-dia").innerText = participante.DiaAtual || 1;
+  }
+}
